@@ -1,0 +1,242 @@
+// some C code with some utility functions -- top level blocks get
+// emitted as-is to the C glue
+{
+#include <stdio.h>
+#include <libtcod.h>
+
+#define MASK_IS_VISIBLE					0x80
+#define MASK_IS_SEEN						0x40
+#define MASK_IS_TRANSPARENT			0x20
+#define MASK_MOVEMENT_COST			0x1F
+#define MOVEMENT_BLOCKED				0x1F
+
+AS3_Val zero_param = NULL;
+
+typedef struct _MapData
+{
+	AS3_Val as3_byte_array;
+	unsigned char* bytes;
+	TCOD_map_t tcod_map;
+	int num_bytes;
+	int width;
+	int height;
+} MapData;
+
+typedef struct _CellValue
+{
+	bool is_visible;
+	bool is_seen;
+	bool is_transparent;
+	bool is_walkable;
+	int movement_cost;
+} CellValue;
+
+int md_index(MapData* map, int x, int y)
+{
+	return y * map->width + x;
+}
+
+void md_read_cell(MapData* map, int x, int y, CellValue* cell)
+{
+	unsigned char byte = map->bytes[md_index(map, x, y)];
+
+	cell->is_seen = (byte & MASK_IS_SEEN) > 0 ? true : false;
+	cell->is_visible = (byte & MASK_IS_VISIBLE) > 0 ? true : false;
+	cell->is_transparent = (byte & MASK_IS_TRANSPARENT) > 0 ? true : false;
+	cell->movement_cost = byte & MASK_MOVEMENT_COST;
+	cell->is_walkable = cell->movement_cost == MOVEMENT_BLOCKED ? false : true;
+}
+
+void md_write_cell(MapData* map, int x, int y, CellValue* cell)
+{
+	unsigned char byte = 0;
+	
+	byte |= cell->is_visible == true ? MASK_IS_VISIBLE : 0;
+	byte |= cell->is_seen == true ? MASK_IS_SEEN : 0;
+	byte |= cell->is_transparent == true ? MASK_IS_TRANSPARENT : 0;
+	byte |= cell->is_walkable == false
+		? MOVEMENT_BLOCKED
+		: cell->movement_cost & MASK_MOVEMENT_COST;
+
+	map->bytes[md_index(map, x, y)] = byte;
+}
+
+void md_set_tcod_from_bytes(MapData* map)
+{
+	int x;
+	int y;
+	CellValue cell;
+	for (y = 0; y < map->height; y++) {
+		for (x = 0; x < map->width; x++) {
+			md_read_cell(map, x, y, &cell);
+			TCOD_map_set_properties(map->tcod_map, x, y, cell.is_transparent, cell.is_walkable);
+		}
+	}
+}
+
+MapData* _map_new(int width, int height)
+{
+	MapData* map = malloc(sizeof(MapData));
+
+	map->width = width;
+	map->height = height;
+
+	map->num_bytes = map->width * map->height;
+	map->bytes = malloc(map->num_bytes);
+
+	map->tcod_map = TCOD_map_new(map->width, map->height);
+
+	return map;
+}
+
+MapData* md_create_map(AS3_Val as3_byte_array, int width, int height)
+{
+	MapData* map = malloc(sizeof(MapData));
+
+	map->as3_byte_array = as3_byte_array;
+	AS3_Acquire(map->as3_byte_array);
+
+	map->width = width;
+	map->height = height;
+	map->num_bytes = map->width * map->height;
+
+	map->bytes = malloc(map->num_bytes); 
+	AS3_SetS(map->as3_byte_array, "position", zero_param);
+	AS3_ByteArray_readBytes(map->bytes, map->as3_byte_array, map->num_bytes);
+
+	map->tcod_map = TCOD_map_new(map->width, map->height);
+	md_set_tcod_from_bytes(map);
+
+	return map;
+}
+
+void md_free_map(MapData* map)
+{
+	TCOD_map_delete(map->tcod_map);
+	free(map->bytes);
+	AS3_Release(map->as3_byte_array);
+	free(map);
+}
+
+void md_write_fov(MapData* map)
+{
+	int x;
+	int y;
+	CellValue cell;
+	bool visible;
+
+	for (y = 0; y < map->height; y++) {
+		for (x = 0; x < map->width; x++) {
+			md_read_cell(map, x, y, &cell);
+			visible = TCOD_map_is_in_fov(map->tcod_map, x, y);
+			if (visible) {
+				cell.is_visible = true;
+				cell.is_seen = true;
+			}
+			else {
+				cell.is_visible = false;
+			}
+
+			md_write_cell(map, x, y, &cell);
+		}
+	}
+
+	AS3_SetS(map->as3_byte_array, "position", zero_param);
+	AS3_ByteArray_writeBytes( map->as3_byte_array, map->bytes, map->num_bytes);	
+}
+
+void _map_compute_fov(AS3_Val as3_byte_array, int width, int height, int player_x, int player_y, int max_radius, bool light_walls, TCOD_fov_algorithm_t algo)
+{
+	MapData* map = md_create_map(as3_byte_array, width, height);
+
+	TCOD_map_compute_fov(map->tcod_map, player_x, player_y, max_radius, light_walls, algo);
+
+	md_write_fov(map);
+
+	md_free_map(map);
+}
+
+}
+
+import flash.utils.ByteArray;
+
+// "int" AS3 <=> C "int"
+// "uint" AS3 <=> C "unsigned"
+// "Number" AS3 <=> C "double"
+// "Boolean" AS3 <=> C "int"
+// "String" AS3 <=> C malloc-ed "const char *" (returning one will free it!)
+// else AS3 <=> C "AS3_Val"
+
+//------------------------------------------------------------
+// Optomized FOV interface
+//------------------------------------------------------------
+
+public function map_new(width:int, height:int):(MapData*)uint
+{
+	return _map_new(width, height);
+}
+
+public function map_compute_fov(mapData:(AS3_Val)ByteArray, width:uint, height:uint, player_x:int, player_y:int, max_radius:int, light_walls:(int)Boolean, algo:(TCOD_fov_algorithm_t)int):void
+{
+	_map_compute_fov(mapData, width, height, player_x, player_y, max_radius, light_walls,  algo);
+}
+
+//------------------------------------------------------------
+// Raw fov.h interface
+//------------------------------------------------------------
+
+// allocate a new map
+public function tcod_map_new/TCOD_map_new(width:int, height:int):(TCOD_map_t)uint;
+
+// set all cells as solid rock (cannot see through nor walk)
+public function tcod_map_clear/TCOD_map_clear(map:(TCOD_map_t)uint):void;
+
+// copy a map to another, reallocating it when needed
+public function tcod_map_copy/TCOD_map_copy(source:(TCOD_map_t)uint, dest:(TCOD_map_t)uint):void;
+
+// change a cell properties
+public function tcod_map_set_properties/TCOD_map_set_properties(map:(TCOD_map_t)uint, x:int, y:int, is_transparent:(int)Boolean, is_walkable:(int)Boolean):void;
+
+// destroy a map
+public function tcod_map_delete/TCOD_map_delete(map:(TCOD_map_t)uint):void;
+
+// calculate the field of view (potentially visible cells from player_x,player_y)
+public function tcod_map_compute_fov/TCOD_map_compute_fov(map:(TCOD_map_t)uint, player_x:int, player_y:int, max_radius:int, light_walls:(int)Boolean, algo:(TCOD_fov_algorithm_t)int):void;
+
+// check if a cell is in the last computed field of view
+public function tcod_map_is_in_fov/TCOD_map_is_in_fov(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+
+// retrieve properties from the map
+public function tcod_map_is_transparent/TCOD_map_is_transparent(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+
+public function tcod_map_is_walkable/TCOD_map_is_walkable(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+
+public function tcod_map_get_width/TCOD_map_get_width(map:(TCOD_map_t)uint):int;
+
+public function tcod_map_get_height/TCOD_map_get_height(map:(TCOD_map_t)uint):int;
+
+public function tcod_map_get_nb_cells/TCOD_map_get_nb_cells(map:(TCOD_map_t)uint):int;
+
+//------------------------------------------------------------
+// path.h
+//------------------------------------------------------------
+
+//public function path_new_using_map/TCOD_path_new_using_map(map:(TCOD_map_t)uint, diagonalCost:(float):Number):(TCOD_path_t)uint;
+
+//public function path_new_using_function/TCOD_path_new_using_function(map_width:int, map_height:int, func:Function, user_data:(void*)uint, diagonalCost:(float)Number):(TCOD_path_t)uint;
+
+//public function path_compute/TCOD_path_compute(path:(TCOD_path_t)uint, ox:int, oy:int, dx:int, dy:int):int; // TODO Boolean
+
+//public function path_walk/TCOD_path_walk(path:(TCOD_path_t)uint, x:(int *)AS3_Val, y:(int *)AS3_Val, recalculate_when_needed:(int)Boolean):int; // TODO Boolean
+
+//public function path_is_empty/TCOD_path_is_empty(path:(TCOD_path_t)uint):int; // TODO Boolean
+
+//public function path_size/TCOD_path_size(path:(TCOD_path_t)uint):int;
+
+//public function path_get/TCOD_path_get(path:(TCOD_path_t)uint, int index, x:(int *)AS3_Val, y:(int *)AS3_Val):void;
+
+//public function path_get_origin/TCOD_path_get_origin(path:(TCOD_path_t)uint, x:(int *), y:(int *)):void;
+
+//public function path_get_destination/TCOD_path_get_destination(path:(TCOD_path_t)uint, x:(int *), y:(int *)):void;
+
+//public function path_delete/TCOD_path_delete(path:(TCOD_path_t)uint):void;
