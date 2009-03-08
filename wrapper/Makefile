@@ -3,7 +3,7 @@
 NAME=libtcod-alchemy-wrapper
 WRAPPER=libtcod_wrapper
 PATH:=${ALCHEMY_HOME}/achacks:${PATH}
-LIBTCOD_SRC=../lib
+LIBTCOD_SRC=../libtcod
 PACKAGE_WRAPPER=libtcodAlchemy
 WRAPPER_SRC_DIR=./bin/src
 GG = gluegen
@@ -12,12 +12,15 @@ CC = gcc
 CCPP = g++
 CFLAGS = -DTERMIOS -DL_ENDIAN -fomit-frame-pointer -O3 -Wall
 LDFLAGS = -L=$(LIBTCOD_SRC) -l=tcod
-OBJS = 
 
-.cpp.o:
-	$(CCPP) $(INC) $(CFLAGS) -c $<
-.c.o:
-	$(CC) $(INC) $(CFLAGS) -c $<
+SRC_EXCLUDE = glue.c
+
+SRC = $(filter-out $(SRC_EXCLUDE), $(wildcard *.c))
+
+OBJS = $(patsubst %.c,%.o, $(SRC))
+
+%.o : %.c
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
 all: $(NAME).swc
 
