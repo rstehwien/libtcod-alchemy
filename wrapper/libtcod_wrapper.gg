@@ -122,6 +122,34 @@ void _map_write_bytearray(MapData* map, AS3_Val byte_array)
 	AS3_ByteArray_writeBytes(byte_array, map->bytes, map->num_bytes);	
 }
 
+void _map_clear_visible(MapData* map)
+{
+	int x;
+	int y;
+	CellValue cell;
+	for (y = 0; y < map->height; y++) {
+		for (x = 0; x < map->width; x++) {
+			md_read_cell(map, x, y, &cell);
+			cell.is_visible = false;
+			md_write_cell(map, x, y, &cell);
+		}
+	}
+}
+
+void _map_clear_seen(MapData* map)
+{
+	int x;
+	int y;
+	CellValue cell;
+	for (y = 0; y < map->height; y++) {
+		for (x = 0; x < map->width; x++) {
+			md_read_cell(map, x, y, &cell);
+			cell.is_seen = false;
+			md_write_cell(map, x, y, &cell);
+		}
+	}
+}
+
 void _map_delete(MapData* map)
 {
 	TCOD_map_delete(map->tcod_map);
@@ -180,6 +208,16 @@ public function map_compute_fov(map:(MapData*)uint,
 public function map_get_tcod_map(map:(MapData*)uint):(TCOD_map_t)uint
 {
 	return map->tcod_map;
+}
+
+public function map_clear_visible(map:(MapData*)uint):void
+{
+	_map_clear_visible(map);
+}
+
+public function map_clear_seen(map:(MapData*)uint):void
+{
+	_map_clear_seen(map);
 }
 
 //------------------------------------------------------------
