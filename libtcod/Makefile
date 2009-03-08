@@ -1,10 +1,10 @@
 # libtcod makefile for alchemy
 
 CFLAGS=$(FLAGS) -Wall -O2
-
 CC=gcc
-
 CPP=g++
+AR= ar rcu
+RANLIB= ranlib
 
 SRC_EXCLUDE= \
 	sys_sdl_c.c \
@@ -13,9 +13,9 @@ SRC_EXCLUDE= \
 	sys_sfml_c.c \
 	zip_c.c \
 
-SRC_C= $(filter-out $(SRC_EXCLUDE), $(wildcard *.c))
+SRC= $(filter-out $(SRC_EXCLUDE), $(wildcard *.c))
 
-LIBOBJS_C= $(patsubst %.c,%.o, $(SRC_C))
+OBJS= $(patsubst %.c,%.o, $(SRC))
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -25,9 +25,10 @@ LIBOBJS_C= $(patsubst %.c,%.o, $(SRC_C))
 
 all : libtcod.a
 
-libtcod.a : $(LIBOBJS_C)
-	ar r $@ $(LIBOBJS_C)
+libtcod.a : $(OBJS)
+	$(AR) $@ $?
+	$(RANLIB) $@
 
 clean :
-	rm -f $(LIBOBJS_C) libtcod.a libtcod.so tcod.l.bc
+	rm -f $(OBJS) libtcod.a libtcod.so tcod.l.bc
 
