@@ -1,0 +1,4 @@
+*.o
+pngtest
+libpng.a
+png.l.bc

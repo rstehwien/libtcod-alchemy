@@ -1,0 +1,3 @@
+*.o
+libtcod.a
+tcod.l.bc

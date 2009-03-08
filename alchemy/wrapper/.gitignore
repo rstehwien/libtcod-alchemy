@@ -1,0 +1,5 @@
+*.o
+bin
+glue.c
+*.swc
+libtcod-wrapper.as

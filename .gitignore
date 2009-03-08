@@ -9,17 +9,3 @@
 .flexProperties
 *.achacks.*
 swfbridge.log
-*.o
-lib*.a
-*.l.bc
-
-libpng/pngtest
-
-wrapper/bin
-wrapper/glue.c
-wrapper/libtcod-alchemy-wrapper.swc
-wrapper/libtcod_wrapper.as
-wrapper/libtcod_wrapper.swc
-
-zlib/example
-zlib/minigzip

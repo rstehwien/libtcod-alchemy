@@ -3,15 +3,26 @@
 NAME=libtcod-alchemy-wrapper
 WRAPPER=libtcod_wrapper
 PATH:=${ALCHEMY_HOME}/achacks:${PATH}
-LIBTCOD_SRC=../libtcod
 PACKAGE_WRAPPER=libtcodAlchemy
 WRAPPER_SRC_DIR=./bin/src
+
+LIB_DIR=../lib
+
+INC_LIBTCOD = -I $(LIB_DIR)/libtcod
+LD_LIBTCOD = -L=$(LIB_DIR)/libtcod -l=tcod
+
+INC_LIBPNG = -I $(LIB_DIR)/libpng
+LD_LIBPNG = -L$(LIB_DIR)/libpng -lpng
+
+INC_ZLIB = -I $(LIB_DIR)/zlib
+LD_ZLIB = -L$(LIB_DIR)/zlib -lz
+
 GG = gluegen
-INC = -I $(LIBTCOD_SRC) -I ../libpng -I ../zlib
+INC = $(INC_LIBTCOD) $(INC_LIBPNG) $(INC_ZLIB)
 CC = gcc
 CCPP = g++
 CFLAGS = -DTERMIOS -DL_ENDIAN -fomit-frame-pointer -O3 -Wall
-LDFLAGS = -L=$(LIBTCOD_SRC) -l=tcod -L../libpng -lpng -L../zlib -lz
+LDFLAGS =  $(LD_LIBTCOD) $(LD_LIBPNG) $(LD_ZLIB)
 
 SRC_EXCLUDE = glue.c
 
