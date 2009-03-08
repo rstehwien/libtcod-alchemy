@@ -7,11 +7,11 @@ LIBTCOD_SRC=../libtcod
 PACKAGE_WRAPPER=libtcodAlchemy
 WRAPPER_SRC_DIR=./bin/src
 GG = gluegen
-INC = -I $(LIBTCOD_SRC)
+INC = -I $(LIBTCOD_SRC) -I ../libpng -I ../zlib
 CC = gcc
 CCPP = g++
 CFLAGS = -DTERMIOS -DL_ENDIAN -fomit-frame-pointer -O3 -Wall
-LDFLAGS = -L=$(LIBTCOD_SRC) -l=tcod
+LDFLAGS = -L=$(LIBTCOD_SRC) -l=tcod -L../libpng -lpng -L../zlib -lz
 
 SRC_EXCLUDE = glue.c
 

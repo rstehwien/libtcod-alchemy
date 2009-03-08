@@ -1,6 +1,6 @@
 # libtcod makefile for alchemy
 
-CFLAGS=$(FLAGS) -Wall -O2
+CFLAGS=$(FLAGS) -I ../libpng -I ../zlib -Wall -O2
 CC=gcc
 CPP=g++
 AR= ar rcu
@@ -11,7 +11,6 @@ SRC_EXCLUDE= \
 	sys_sdl_img_bmp.c \
 	sys_sdl_img_png.c \
 	sys_sfml_c.c \
-	zip_c.c \
 
 SRC= $(filter-out $(SRC_EXCLUDE), $(wildcard *.c))
 
