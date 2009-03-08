@@ -1,5 +1,5 @@
 all:
-	(cd zlib; ./configure; make)
+	(cd zlib; make)
 	(cd libpng; make -f scripts/makefile.gcc)
 	(cd libtcod; make)
 	(cd wrapper; make)
