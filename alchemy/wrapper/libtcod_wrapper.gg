@@ -34,14 +34,14 @@ extern void sztrace(char* msg);
 static char trace_str[1024];
 void mytrace() { sztrace(trace_str); }
 
-int md_index(MapData* map, int x, int y)
+int md_index(int width, int x, int y)
 {
-	return y * map->width + x;
+	return y * width + x;
 }
 
 void md_read_cell(MapData* map, int x, int y, CellValue* cell)
 {
-	unsigned char byte = map->bytes[md_index(map, x, y)];
+	unsigned char byte = map->bytes[md_index(map->width, x, y)];
 
 	cell->is_seen = (byte & MASK_IS_SEEN) > 0 ? true : false;
 	cell->is_visible = (byte & MASK_IS_VISIBLE) > 0 ? true : false;
@@ -61,7 +61,7 @@ void md_write_cell(MapData* map, int x, int y, CellValue* cell)
 		? MOVEMENT_BLOCKED
 		: cell->movement_cost & MASK_MOVEMENT_COST;
 
-	map->bytes[md_index(map, x, y)] = byte;
+	map->bytes[md_index(map->width, x, y)] = byte;
 }
 
 MapData* _map_new(int width, int height)
@@ -157,6 +157,50 @@ void _map_delete(MapData* map)
 	free(map);
 }
 
+void _map_write_visibility_mask(MapData* map, 
+																AS3_Val byte_array,
+																int image_width,
+																int image_height,
+																int grid_size)
+{
+	long num_pixels = image_width * image_height;
+	long num_bytes = num_pixels * sizeof(int);
+
+	int* pixels = malloc(num_bytes);
+
+	int image_x;
+	int image_y;
+	int cell_x;
+	int cell_y;
+	long img_idx;
+	CellValue cell;
+
+	for (image_y = 0; image_y < image_height; image_y++) {
+		for (image_x = 0; image_x < image_width; image_x++) {
+			img_idx = md_index(image_width, image_x, image_y);
+
+			cell_x = image_x/grid_size;
+			cell_y = image_y/grid_size;
+			md_read_cell(map, cell_x, cell_y, &cell);
+
+			if (cell.is_visible) {
+				pixels[img_idx] = 0xFF000000;
+			}
+			else if (cell.is_seen) {
+				pixels[img_idx] = 0x40000000;
+			}
+			else {
+				pixels[img_idx] = 0xFFFFFFFF;
+			}
+		}
+	}
+
+	AS3_SetS(byte_array, "position", zero_param);
+	AS3_ByteArray_writeBytes(byte_array, pixels, num_bytes);	
+
+	free(pixels);
+}
+
 }
 
 import flash.utils.ByteArray;
@@ -218,6 +262,15 @@ public function map_clear_visible(map:(MapData*)uint):void
 public function map_clear_seen(map:(MapData*)uint):void
 {
 	_map_clear_seen(map);
+}
+
+public function map_write_visibility_mask(map:(MapData*)uint, 
+																					byteArray:(AS3_Val)ByteArray,
+																					imageWidth:int,
+																					imageHeight:int,
+																					gridSize:int):void
+{
+	_map_write_visibility_mask(map, byteArray, imageWidth, imageHeight, gridSize);
 }
 
 //------------------------------------------------------------
