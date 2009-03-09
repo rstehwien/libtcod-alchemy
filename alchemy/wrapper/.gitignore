@@ -2,5 +2,5 @@
 bin
 glue.c
 *.swc
-libtcod-wrapper.as
+libtcod_wrapper.as
 glue.c
