@@ -45,57 +45,21 @@ package libtcodAlchemy
 		public function Map()
 		{
 		}
+
+		public function dispose():void
+		{
+				if (_tcodMap != 0)
+				{
+						libtcod_wrapper.map_delete(_tcodMap);
+						_tcodMap = 0;
+				}
+		}
 		
 		public function clone():Map
 		{
 			var ret:Map = new Map();
 			ret.copy(this);			
 			return ret;
-		}
-		
-		private static function _compare(data1:ByteArray, width1:uint, height1:uint, data2:ByteArray, width2:uint, height2:uint):Vector.<Boolean>
-		{
-			var x:int;
-			var y:int;
-			
-			var changed:Vector.<Boolean> = new Vector.<Boolean>(width1*height1, true);
-			
-			for (y = 0; y < height1; y++)
-			{
-				for (x = 0; x < width1; x++)
-				{
-					var idx:uint = index(width1, x, y);
-					
-					if (data2 && x < width2 && y < height2)
-					{
-						changed[idx] = (data1[index(width1, x, y)] - data2[index(width2, x, y)]) != 0;
-					}
-					else
-					{
-						changed[idx] = true;
-					}
-				}
-			}
-			
-			return changed;
-		}
-		
-		public function compare(map:Map):void
-		{
-			_changed = _compare(this._data, this._width, this._height, map ? map._data : null, map ? map._width : 0, map ? map._height : 0);			
-		}
-		
-		public function isChanged(x:int, y:int):Boolean
-		{
-			try
-			{
-				return _changed[index(width, x, y)] == true;
-			}
-			catch (e:Error)
-			{
-				return false;
-			}
-			return false;
 		}
 		
 		public function copy(map:Map):void
@@ -111,34 +75,37 @@ package libtcodAlchemy
 					_data = new ByteArray();
 					
 				_data.writeBytes(map._data);
+				_tcodMap = libtcod_wrapper.map_new(width, height);
 			}
 			else
 			{
-				setSize(_width, height, false);
+				setSize(_width, _height, false);
 			}
+		}
+		
+		public function compare(map:Map):void
+		{
+			_changed = _compare(this._data, this._width, this._height, map ? map._data : null, map ? map._width : 0, map ? map._height : 0);			
 		}
 		
 		public function computeFov(x:int, y:int, maxRadius:int, lightWalls:Boolean, algorithm:int):void
 		{
-			var start:int = flash.utils.getTimer();
-			var mid:int = start;
-			
-			var old:Map = clone();
-			mid = traceTime(mid, "computerFov() clone()");
-			
 			libtcod_wrapper.map_read_bytearray(_tcodMap, _data);
-			mid = traceTime(mid, "computerFov() map_read_bytearray()");
-
 			libtcod_wrapper.map_compute_fov(_tcodMap, x, y, maxRadius, lightWalls, algorithm);
-			mid = traceTime(mid, "computerFov() map_compute_fov()");
-
 			libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
-			mid = traceTime(mid, "computerFov() map_write_bytearray()");
-						
-			compare(old);
-			mid = traceTime(mid, "computerFov() compare()");
-
-			traceTime(start, "computerFov() TOTAL");
+		}
+		
+		public function isChanged(x:int, y:int):Boolean
+		{
+			try
+			{
+				return _changed[index(width, x, y)] == true;
+			}
+			catch (e:Error)
+			{
+				return false;
+			}
+			return false;
 		}
 		
 		public function get byteArray():ByteArray { return _data; }
@@ -195,34 +162,18 @@ package libtcodAlchemy
 		
 		public function clearVisible():void
 		{
-			var start:int = flash.utils.getTimer();
-			var mid:int = start;
-
-			var x:int;
-			var y:int;
-			for (y = 0; y < height; y++)
-			{
-				for (x = 0; x < width; x++)
-				{
-					setIsVisible(x, y, false);
-				}	
-			}
-						
-			traceTime(start, "clearVisible() TOTAL");
-			
+				// Faster to call the C code for large data-sets
+				libtcod_wrapper.map_read_bytearray(_tcodMap, _data);
+				libtcod_wrapper.map_clear_visible(_tcodMap);
+				libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
 		}
 		
 		public function clearSeen():void
 		{
-			var x:int;
-			var y:int;
-			for (y = 0; y < height; y++)
-			{
-				for (x = 0; x < width; x++)
-				{
-					setIsSeen(x, y, false);					
-				}	
-			}
+				// Faster to call the C code for large data-sets
+				libtcod_wrapper.map_read_bytearray(_tcodMap, _data);
+				libtcod_wrapper.map_clear_seen(_tcodMap);
+				libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
 		}
 		
 		public function getIsVisible(x:uint, y:uint):Boolean
@@ -350,6 +301,33 @@ package libtcodAlchemy
 			return byte;
 		}
 		
+		private static function _compare(data1:ByteArray, width1:uint, height1:uint, data2:ByteArray, width2:uint, height2:uint):Vector.<Boolean>
+		{
+			var x:int;
+			var y:int;
+			
+			var changed:Vector.<Boolean> = new Vector.<Boolean>(width1*height1, true);
+			
+			for (y = 0; y < height1; y++)
+			{
+				for (x = 0; x < width1; x++)
+				{
+					var idx:uint = index(width1, x, y);
+					
+					if (data2 && x < width2 && y < height2)
+					{
+						changed[idx] = (data1[index(width1, x, y)] - data2[index(width2, x, y)]) != 0;
+					}
+					else
+					{
+						changed[idx] = true;
+					}
+				}
+			}
+			
+			return changed;
+		}
+		
 		private function traceTime(start:int, msg:String):int
 		{
 			var end:int = flash.utils.getTimer();
@@ -357,4 +335,13 @@ package libtcodAlchemy
 			return end;
 		}
 	}
+}
+
+class MapCell
+{
+		public var isVisible:Boolean;
+		public var isSeen:Boolean;
+		public var isTransparent:Boolean;
+		public var isWalkable:Boolean;
+		public var movementCost:uint;
 }

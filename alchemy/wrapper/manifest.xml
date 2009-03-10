@@ -2,5 +2,4 @@
 <componentPackage>
 	<component class="libtcodAlchemy.libtcod_wrapper"/>
 	<component class="libtcodAlchemy.Map"/>
-	<component class="libtcodAlchemy.MapCell"/>
 </componentPackage>
