@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
 <componentPackage>
-	<component id="libtcod_wrapper" class="libtcodAlchemy.libtcod_wrapper"/>
+	<component class="libtcodAlchemy.libtcod_wrapper"/>
+	<component class="libtcodAlchemy.Map"/>
+	<component class="libtcodAlchemy.MapCell"/>
 </componentPackage>
