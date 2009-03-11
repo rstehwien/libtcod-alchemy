@@ -24,11 +24,15 @@ CCPP = g++
 CFLAGS = -DTERMIOS -DL_ENDIAN -fomit-frame-pointer -O3 -Wall
 LDFLAGS =  $(LD_LIBTCOD) $(LD_LIBPNG) $(LD_ZLIB)
 
-SRC_EXCLUDE = glue.c
+SRC_C_EXCLUDE = glue.c
 
-SRC = $(filter-out $(SRC_EXCLUDE), $(wildcard *.c))
+SRC_C = $(filter-out $(SRC_C_EXCLUDE), $(wildcard *.c))
 
-OBJS = $(patsubst %.c,%.o, $(SRC))
+SRC_H = $(wildcard *.h)
+
+OBJS_C = $(patsubst %.c,%.o, $(SRC_C))
+
+SRC_AS = $(wildcard $(WRAPPER_SRC_DIR)/$(PACKAGE_WRAPPER)/*.as)
 
 %.o : %.c
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
@@ -40,16 +44,16 @@ glue.c : $(WRAPPER).gg
 
 glue.o : glue.c
 
-$(WRAPPER).swc : glue.o $(OBJS)
-	$(CC) $(INC) $(CFLAGS) -swc -o $(WRAPPER).swc glue.o $(OBJS) $(LDFLAGS)
+$(WRAPPER).swc : glue.o $(OBJS_C) $(SRC_C) $(SRC_H)
+	$(CC) $(INC) $(CFLAGS) -swc -o $(WRAPPER).swc glue.o $(OBJS_C) $(LDFLAGS)
 
-$(NAME).swc : $(WRAPPER).swc
+$(NAME).swc : $(WRAPPER).swc $(SRC_AS)
 	compc -namespace $(PACKAGE_WRAPPER) manifest.xml -source-path $(WRAPPER_SRC_DIR) -include-namespaces $(PACKAGE_WRAPPER) -include-libraries $(WRAPPER).swc -target-player=10.0.0 -output='$(NAME).swc'
 
 $(WRAPPER).gg : 
 
 clean:
-	rm $(OBJS)
+	rm $(OBJS_C)
 	rm glue.*
 	rm $(WRAPPER).swc 
 	rm $(NAME).swc
