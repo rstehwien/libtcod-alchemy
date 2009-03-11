@@ -28,19 +28,10 @@ package libtcodAlchemy
 				public static const FOV_PERMISSIVE_7:int = 10;
 				public static const FOV_PERMISSIVE_8:int = 11;
 
-				private static const MASK_MAP_DATA:uint  		= 0xFF; // 1111 1111
-				private static const MASK_IS_VISIBLE:uint		= 0x80; // 1000 0000
-				private static const MASK_IS_SEEN:uint   		= 0x40; // 0100 0000
-				private static const MASK_IS_TRANSPARENT:uint   = 0x20; // 0010 0000
-				private static const MASK_MOVEMENT_COST:uint  	= 0x1F; // 0001 1111
-				private static const MOVEMENT_BLOCKED:uint  	= 0x1F; // 0001 1111
-
 				private var _data:ByteArray;
 				private var _tcodMap:uint;
 				private var _width:uint;
 				private var _height:uint;
-				private var _changed:Vector.<Boolean> = new Vector.<Boolean>();
-
 
 				public function Map()
 				{
@@ -70,10 +61,14 @@ package libtcodAlchemy
 						if (map._data)
 						{
 								if (_data)
-								_data.clear();
+								{
+										_data.clear();
+								}
 								else
-								_data = new ByteArray();
-
+								{
+										_data = new ByteArray();
+								}
+								
 								_data.writeBytes(map._data);
 								_tcodMap = libtcod_wrapper.map_new(width, height);
 						}
@@ -83,56 +78,24 @@ package libtcodAlchemy
 						}
 				}
 
-				public function compare(map:Map):void
-				{
-						_changed = _compare(this._data, this._width, this._height, map ? map._data : null, map ? map._width : 0, map ? map._height : 0);
-				}
-
-				public function computeFov(x:int, y:int, maxRadius:int, lightWalls:Boolean, algorithm:int):void
-				{
-						libtcod_wrapper.map_read_bytearray(_tcodMap, _data);
-						libtcod_wrapper.map_compute_fov(_tcodMap, x, y, maxRadius, lightWalls, algorithm);
-						libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
-				}
-
-				public function isChanged(x:int, y:int):Boolean
-				{
-						try
-						{
-								return _changed[index(width, x, y)] == true;
-						}
-						catch (e:Error)
-						{
-								return false;
-						}
-						return false;
-				}
-
-				public function get byteArray():ByteArray { return _data; }
-
-				public function toString():String
-				{
-						var str:String = "";
-						var i:int;
-						var byte:uint;
-						for (i = 0; i < _data.length; i++)
-						{
-								byte = _data[i];
-								str = str + " " + byte;
-						}
-						return str;
-				}
-
 				public function get width():uint { return _width; }
 				public function get height():uint { return _height; }
 
-				public function setSize(newWidth:uint, newHeight:uint, copyOld:Boolean = true, defaultValue:uint = 0):void
+				public function setSize(newWidth:uint, newHeight:uint, copyOld:Boolean = true, defaultValue:MapCell = null):void
 				{
+						if (defaultValue == null)
+						{
+								defaultValue = new MapCell();
+						}
+						var defaultByte:uint = defaultValue.byte;
+
 						var newData:ByteArray = new ByteArray();
 						newData.length = newWidth * newHeight;
 
 						if (_tcodMap != 0)
-						libtcod_wrapper.map_delete(_tcodMap);
+						{
+								libtcod_wrapper.map_delete(_tcodMap);
+						}
 
 						var x:int;
 						var y:int;
@@ -147,17 +110,22 @@ package libtcodAlchemy
 										}
 										else
 										{
-												newData[index(newWidth, x, y)] = defaultValue;
+												newData[index(newWidth, x, y)] = defaultByte;
 										}
 								}
 						}
-
-						_changed = _compare(newData, newWidth, newHeight, _data, _width, _height);
 
 						_data = newData;
 						_width = newWidth;
 						_height = newHeight;
 						_tcodMap = libtcod_wrapper.map_new(width, height);
+				}
+
+				public function computeFov(x:int, y:int, maxRadius:int, lightWalls:Boolean, algorithm:int):void
+				{
+						libtcod_wrapper.map_read_bytearray(_tcodMap, _data);
+						libtcod_wrapper.map_compute_fov(_tcodMap, x, y, maxRadius, lightWalls, algorithm);
+						libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
 				}
 
 				public function clearVisible():void
@@ -176,6 +144,25 @@ package libtcodAlchemy
 						libtcod_wrapper.map_write_bytearray(_tcodMap, _data);
 				}
 
+				public function getMapCell(x:uint, y:uint):MapCell
+				{
+						validateLocation(x,y);
+						var byte:uint = _data[index(width, x, y)];
+
+						var ret:MapCell = new MapCell();
+						ret.byte = byte;
+						ret.x = x;
+						ret.y = y;
+
+						return ret;
+				}
+
+				public function setMapCell(value:MapCell):void
+				{
+						validateLocation(value.x, value.y);
+						_data[index(width, value.x, value.y)] = value.byte;
+				}
+
 				public function getIsVisible(x:uint, y:uint):Boolean
 				{
 						return getMapCell(x, y).isVisible;
@@ -185,7 +172,7 @@ package libtcodAlchemy
 				{
 						var cellValue:MapCell = getMapCell(x, y);
 						cellValue.isVisible = value;
-						setMapCell(x, y, cellValue);
+						setMapCell(cellValue);
 				}
 
 				public function getIsSeen(x:uint, y:uint):Boolean
@@ -197,7 +184,7 @@ package libtcodAlchemy
 				{
 						var cellValue:MapCell = getMapCell(x, y);
 						cellValue.isSeen = value;
-						setMapCell(x, y, cellValue);
+						setMapCell(cellValue);
 				}
 
 				public function getIsTransparent(x:uint, y:uint):Boolean
@@ -209,7 +196,7 @@ package libtcodAlchemy
 				{
 						var cellValue:MapCell = getMapCell(x, y);
 						cellValue.isTransparent = value;
-						setMapCell(x, y, cellValue);
+						setMapCell(cellValue);
 				}
 
 				public function getIsWalkable(x:uint, y:uint):Boolean
@@ -221,7 +208,7 @@ package libtcodAlchemy
 				{
 						var cellValue:MapCell = getMapCell(x, y);
 						cellValue.isWalkable = value;
-						setMapCell(x, y, cellValue);
+						setMapCell(cellValue);
 				}
 
 				public function getMovementCost(x:uint, y:uint):uint
@@ -231,23 +218,48 @@ package libtcodAlchemy
 
 				public function setMovementCost(x:uint, y:uint, value:uint):void
 				{
-						validateMovementCost(value);
-
 						var cellValue:MapCell = getMapCell(x, y);
 						cellValue.movementCost = value;
-						setMapCell(x, y, cellValue);
+						setMapCell(cellValue);
+				}
+
+				public function changedCells(from:Map):Vector.<MapCell>
+				{
+						var vector:Vector.<MapCell> = new Vector.<MapCell>();
+
+						var x:int;
+						var y:int;
+
+						var changed:Boolean;
+						var current:MapCell;
+
+						for (y = 0; y < height; y++)
+						{
+								for (x = 0; x < width; x++)
+								{
+										current = getMapCell(x, y);
+
+										if (from && from._data && x < from.width && y < from.height)
+												changed = (current.byte - from._data[index(from.width, x, y)]) != 0;
+										else
+												changed = true;
+
+										if (changed)
+										{
+												vector.push(current);
+										}
+								}
+						}
+
+						return vector;
 				}
 
 				private function validateLocation(x:uint, y:uint):void
 				{
 						if (_data == null || x >= width || y > height || index(width, x,y) > _data.length)
-						throw new Error("(x,y) value invalid");
-				}
-
-				private function setMapCell(x:uint, y:uint, value:MapCell):void
-				{
-						validateLocation(x,y);
-						_data[index(width, x, y)] = _createMapCell(value);
+						{
+								throw new Error("(x,y) value invalid");
+						}
 				}
 
 				private static function index(width:int, x:uint, y:uint):uint
@@ -255,78 +267,19 @@ package libtcodAlchemy
 						return y * width + x;
 				}
 
-				private static function validateMovementCost(cost:int):void
+				public function get byteArray():ByteArray { return _data; }
+
+				public function toString():String
 				{
-						if (cost >= MOVEMENT_BLOCKED)
-						throw new Error("Movement cost can be between 0-" + (MOVEMENT_BLOCKED - 1));
-				}
-
-				public static function createMapCell(isTransparent:Boolean, isWalkable:Boolean, movementCost:uint, visible:Boolean = false, seen:Boolean = false):uint
-				{
-						validateMovementCost(movementCost);
-
-						var cellValue:MapCell = new MapCell();
-						cellValue.isVisible = visible;
-						cellValue.isSeen = seen;
-						cellValue.isWalkable = isWalkable;
-						cellValue.isTransparent = isTransparent;
-						cellValue.movementCost = movementCost;
-						return _createMapCell(cellValue);
-				}
-
-				private function getMapCell(x:uint, y:uint):MapCell
-				{
-						validateLocation(x,y);
-						var byte:uint = _data[index(width, x, y)];
-
-						var ret:MapCell = new MapCell();
-						ret.isVisible = (byte & MASK_IS_VISIBLE) > 0;
-						ret.isSeen = (byte & MASK_IS_SEEN) > 0;
-						ret.isTransparent = (byte & MASK_IS_TRANSPARENT) > 0;
-						ret.movementCost = byte & MASK_MOVEMENT_COST;
-						ret.isWalkable = ret.movementCost != MOVEMENT_BLOCKED;
-
-						return ret;
-				}
-
-				private static function _createMapCell(value:MapCell):uint
-				{
-						var byte:uint = 0;
-
-						byte |= value.isVisible ? MASK_IS_VISIBLE : 0;
-						byte |= value.isSeen ? MASK_IS_SEEN : 0;
-						byte |= value.isTransparent ? MASK_IS_TRANSPARENT : 0;
-						byte |= !value.isWalkable ? MOVEMENT_BLOCKED : value.movementCost & MASK_MOVEMENT_COST;
-
-						return byte;
-				}
-
-				private static function _compare(data1:ByteArray, width1:uint, height1:uint, data2:ByteArray, width2:uint, height2:uint):Vector.<Boolean>
-				{
-						// TODO might be faster to do this in C
-						var x:int;
-						var y:int;
-
-						var changed:Vector.<Boolean> = new Vector.<Boolean>(width1*height1, true);
-
-						for (y = 0; y < height1; y++)
+						var str:String = "";
+						var i:int;
+						var byte:uint;
+						for (i = 0; i < _data.length; i++)
 						{
-								for (x = 0; x < width1; x++)
-								{
-										var idx:uint = index(width1, x, y);
-
-										if (data2 && x < width2 && y < height2)
-										{
-												changed[idx] = (data1[index(width1, x, y)] - data2[index(width2, x, y)]) != 0;
-										}
-										else
-										{
-												changed[idx] = true;
-										}
-								}
+								byte = _data[i];
+								str = str + " " + byte;
 						}
-
-						return changed;
+						return str;
 				}
 
 				private function traceTime(start:int, msg:String):int
@@ -336,13 +289,4 @@ package libtcodAlchemy
 						return end;
 				}
 		}
-}
-
-class MapCell
-{
-		public var isVisible:Boolean;
-		public var isSeen:Boolean;
-		public var isTransparent:Boolean;
-		public var isWalkable:Boolean;
-		public var movementCost:uint;
 }
