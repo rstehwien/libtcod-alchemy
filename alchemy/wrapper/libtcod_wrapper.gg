@@ -173,51 +173,51 @@ import flash.utils.ByteArray;
 //------------------------------------------------------------
 
 public function map_new(width:int, 
-												height:int):(MapData*)uint
+												height:int):uint
 {
-	return _map_new(width, height);
+	return (unsigned int)_map_new(width, height);
 }
 
-public function map_delete(map:(MapData*)uint):void
+public function map_delete(map:uint):void
 {
-	_map_delete(map);
+	_map_delete((MapData*)map);
 }
 
-public function map_read_bytearray(map:(MapData*)uint, 
-																	 byteArray:(AS3_Val)ByteArray):void
+public function map_read_bytearray(map:uint, 
+																	 byteArray:ByteArray):void
 {
-	_map_read_bytearray(map, byteArray);
+	_map_read_bytearray((MapData*)map, byteArray);
 }
 
-public function map_write_bytearray(map:(MapData*)uint, 
-																		byteArray:(AS3_Val)ByteArray):void
+public function map_write_bytearray(map:uint, 
+																		byteArray:ByteArray):void
 {
-	_map_write_bytearray(map, byteArray);
+	_map_write_bytearray((MapData*)map, byteArray);
 }
 
-public function map_compute_fov(map:(MapData*)uint, 
+public function map_compute_fov(map:uint, 
 																x:int,
 																y:int,
 																max_radius:int,
 																light_walls:(int)Boolean,
-																algo:(TCOD_fov_algorithm_t)int):void
+																algo:int):void
 {
-	TCOD_map_compute_fov(map->tcod_map, x, y, max_radius, light_walls, algo);
+	TCOD_map_compute_fov(((MapData*)map)->tcod_map, x, y, max_radius, light_walls, (TCOD_fov_algorithm_t)algo);
 }
 
-public function map_get_tcod_map(map:(MapData*)uint):(TCOD_map_t)uint
+public function map_get_tcod_map(map:uint):uint
 {
-	return map->tcod_map;
+	return (unsigned int)((MapData*)map)->tcod_map;
 }
 
-public function map_clear_visible(map:(MapData*)uint):void
+public function map_clear_visible(map:uint):void
 {
-	_map_clear_visible(map);
+	_map_clear_visible((MapData*)map);
 }
 
-public function map_clear_seen(map:(MapData*)uint):void
+public function map_clear_seen(map:uint):void
 {
-	_map_clear_seen(map);
+	_map_clear_seen((MapData*)map);
 }
 
 //------------------------------------------------------------
@@ -225,7 +225,10 @@ public function map_clear_seen(map:(MapData*)uint):void
 //------------------------------------------------------------
 
 // allocate a new map
-public function tcod_map_new/TCOD_map_new(width:int, height:int):(TCOD_map_t)uint;
+public function tcod_map_new(width:int, height:int):uint
+{
+	return (unsigned int)TCOD_map_new(width, height);
+}
 
 // set all cells as solid rock (cannot see through nor walk)
 public function tcod_map_clear/TCOD_map_clear(map:(TCOD_map_t)uint):void;
@@ -243,12 +246,36 @@ public function tcod_map_delete/TCOD_map_delete(map:(TCOD_map_t)uint):void;
 public function tcod_map_compute_fov/TCOD_map_compute_fov(map:(TCOD_map_t)uint, player_x:int, player_y:int, max_radius:int, light_walls:(int)Boolean, algo:(TCOD_fov_algorithm_t)int):void;
 
 // check if a cell is in the last computed field of view
-public function tcod_map_is_in_fov/TCOD_map_is_in_fov(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+public function tcod_map_is_in_fov(map:uint, x:int, y:int):(AS3_Val)Object // Boolean
+{
+	if (TCOD_map_is_in_fov((TCOD_map_t)map, x, y) == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
 
 // retrieve properties from the map
-public function tcod_map_is_transparent/TCOD_map_is_transparent(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+public function tcod_map_is_transparent(map:uint, x:int, y:int):(AS3_Val)Object // Boolean
+{
+	if (TCOD_map_is_transparent((TCOD_map_t)map, x, y) == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
 
-public function tcod_map_is_walkable/TCOD_map_is_walkable(map:(TCOD_map_t)uint, x:int, y:int):int; // TODO Boolean
+public function tcod_map_is_walkable(map:uint, x:int, y:int):(AS3_Val)Object // Boolean
+{
+	if (TCOD_map_is_walkable((TCOD_map_t)map, x, y) == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
 
 public function tcod_map_get_width/TCOD_map_get_width(map:(TCOD_map_t)uint):int;
 
@@ -260,49 +287,92 @@ public function tcod_map_get_nb_cells/TCOD_map_get_nb_cells(map:(TCOD_map_t)uint
 // Raw path.h interface
 //------------------------------------------------------------
 
-public function
-tcod_path_new_using_map/TCOD_path_new_using_map(map:(TCOD_map_t)uint, 
-																								diagonalCost:Number):(TCOD_path_t)uint;
+public function tcod_path_new_using_map(map:uint, diagonalCost:Number):uint
+{
+	return (unsigned int)TCOD_path_new_using_map((TCOD_map_t)map, diagonalCost);
+}
 
-public function
-tcod_path_new_using_function/TCOD_path_new_using_function(map_width:int,
-																													map_height:int,
-																													func:Function, 
-																													user_data:(void*)uint,
-																													diagonalCost:(float)Number):(TCOD_path_t)uint;
+// TCOD_path_new_using_function must be handled by custom code rather than a pure pass through
+//public function
+//tcod_path_new_using_function/TCOD_path_new_using_function(map_width:int,
+//																													map_height:int,
+//																													func:Function,
+//																													user_data:(void*)uint,
+//																													diagonalCost:(float)Number):(TCOD_path_t)uint;
 
-public function
-tcod_path_compute/TCOD_path_compute(path:(TCOD_path_t)uint,
-																		ox:int, oy:int,
-																		dx:int, dy:int):int; // TODO Boolean
+public function tcod_path_compute(path:uint, ox:int, oy:int, dx:int, dy:int):(AS3_Val)Object // Boolean
+{
+	if (TCOD_path_compute((TCOD_path_t)path, ox, oy, dx, dy) == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
 
-public function
-tcod_path_walk/TCOD_path_walk(path:(TCOD_path_t)uint,
-															x:(AS3_Val)int, 
-															y:(AS3_Val)int,
-															recalculate_when_needed:(int)Boolean):int; // TODO Boolean
+public function tcod_path_walk(path:uint, vx:(AS3_Val)int, vy:(AS3_Val)int, recalculate_when_needed:Boolean):(AS3_Val)Object // Boolean
+{
+	int x = AS3_IntValue(vx);
+	int y = AS3_IntValue(vy);
+	int ret = TCOD_path_walk((TCOD_path_t)path, &x, &y, recalculate_when_needed);
+	AS3_Release(vx);
+	AS3_Release(vy);
+	vx = AS3_Int(x);
+	vy = AS3_Int(y);
 
-public function
-tcod_path_is_empty/TCOD_path_is_empty(path:(TCOD_path_t)uint):int; // TODO Boolean
+	if (ret == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
+
+public function tcod_path_is_empty(path:uint):(AS3_Val)Object // Boolean
+{
+	if (TCOD_path_is_empty((TCOD_path_t)path) == true) {
+		return AS3_True();
+	}
+	else {
+		return AS3_False();
+	}
+}
 
 public function
 tcod_path_size/TCOD_path_size(path:(TCOD_path_t)uint):int;
 
-public function
-path_get/TCOD_path_get(path:(TCOD_path_t)uint,
-											 index:int,
-											 x:(AS3_Val)int,
-											 y:(AS3_Val)int):void;
+public function path_get(path:uint, index:int, vx:(AS3_Val)int, vy:(AS3_Val)int):void
+{
+	int x = AS3_IntValue(vx);
+	int y = AS3_IntValue(vy);
+	TCOD_path_get((TCOD_path_t)path, index, &x, &y);
+	AS3_Release(vx);
+	AS3_Release(vy);
+	vx = AS3_Int(x);
+	vy = AS3_Int(y);
+}
 
-public function
-tcod_path_get_origin/TCOD_path_get_origin(path:(TCOD_path_t)uint, 
-																					x:(AS3_Val)int, 
-																					y:(AS3_Val)int):void;
+public function tcod_path_get_origin(path:uint, vx:(AS3_Val)int, vy:(AS3_Val)int):void
+{
+	int x = AS3_IntValue(vx);
+	int y = AS3_IntValue(vy);
+	TCOD_path_get_origin((TCOD_path_t)path, &x, &y);
+	AS3_Release(vx);
+	AS3_Release(vy);
+	vx = AS3_Int(x);
+	vy = AS3_Int(y);
+}
 
-public function
-tcod_path_get_destination/TCOD_path_get_destination(path:(TCOD_path_t)uint,
-																										x:(AS3_Val)int,
-																										y:(AS3_Val)int):void;
+public function tcod_path_get_destination(path:(TCOD_path_t)uint, vx:(AS3_Val)int, vy:(AS3_Val)int):void
+{
+	int x = AS3_IntValue(vx);
+	int y = AS3_IntValue(vy);
+	TCOD_path_get_destination((TCOD_path_t)path, &x, &y);
+	AS3_Release(vx);
+	AS3_Release(vy);
+	vx = AS3_Int(x);
+	vy = AS3_Int(y);
+}
 
 public function
 tcod_path_delete/TCOD_path_delete(path:(TCOD_path_t)uint):void;
