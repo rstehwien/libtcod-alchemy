@@ -10,152 +10,152 @@
 #define MASK_MOVEMENT_COST			0x1F
 #define MOVEMENT_BLOCKED				0x1F
 
-AS3_Val zero_param = NULL;
+	AS3_Val zero_param = NULL;
 
-typedef struct _MapData
-{
-	unsigned char* bytes;
-	TCOD_map_t tcod_map;
-	int num_bytes;
-	int width;
-	int height;
-} MapData;
+	typedef struct _MapData
+	{
+		unsigned char* bytes;
+		TCOD_map_t tcod_map;
+		int num_bytes;
+		int width;
+		int height;
+	} MapData;
 
-typedef struct _CellValue
-{
-	bool is_visible;
-	bool is_seen;
-	bool is_transparent;
-	bool is_walkable;
-	int movement_cost;
-} CellValue;
+	typedef struct _CellValue
+	{
+		bool is_visible;
+		bool is_seen;
+		bool is_transparent;
+		bool is_walkable;
+		int movement_cost;
+	} CellValue;
 
-extern void sztrace(char* msg);
-static char trace_str[1024];
-void mytrace() { sztrace(trace_str); }
+	extern void sztrace(char* msg);
+	static char trace_str[1024];
+	void mytrace() { sztrace(trace_str); }
 
-int md_index(int width, int x, int y)
-{
-	return y * width + x;
-}
+	int md_index(int width, int x, int y)
+	{
+		return y * width + x;
+	}
 
-void md_read_cell(MapData* map, int x, int y, CellValue* cell)
-{
-	unsigned char byte = map->bytes[md_index(map->width, x, y)];
+	void md_read_cell(MapData* map, int x, int y, CellValue* cell)
+	{
+		unsigned char byte = map->bytes[md_index(map->width, x, y)];
 
-	cell->is_seen = (byte & MASK_IS_SEEN) > 0 ? true : false;
-	cell->is_visible = (byte & MASK_IS_VISIBLE) > 0 ? true : false;
-	cell->is_transparent = (byte & MASK_IS_TRANSPARENT) > 0 ? true : false;
-	cell->movement_cost = byte & MASK_MOVEMENT_COST;
-	cell->is_walkable = cell->movement_cost == MOVEMENT_BLOCKED ? false : true;
-}
+		cell->is_seen = (byte & MASK_IS_SEEN) > 0 ? true : false;
+		cell->is_visible = (byte & MASK_IS_VISIBLE) > 0 ? true : false;
+		cell->is_transparent = (byte & MASK_IS_TRANSPARENT) > 0 ? true : false;
+		cell->movement_cost = byte & MASK_MOVEMENT_COST;
+		cell->is_walkable = cell->movement_cost == MOVEMENT_BLOCKED ? false : true;
+	}
 
-void md_write_cell(MapData* map, int x, int y, CellValue* cell)
-{
-	unsigned char byte = 0;
+	void md_write_cell(MapData* map, int x, int y, CellValue* cell)
+	{
+		unsigned char byte = 0;
 	
-	byte |= cell->is_visible == true ? MASK_IS_VISIBLE : 0;
-	byte |= cell->is_seen == true ? MASK_IS_SEEN : 0;
-	byte |= cell->is_transparent == true ? MASK_IS_TRANSPARENT : 0;
-	byte |= cell->is_walkable == false
-		? MOVEMENT_BLOCKED
-		: cell->movement_cost & MASK_MOVEMENT_COST;
+		byte |= cell->is_visible == true ? MASK_IS_VISIBLE : 0;
+		byte |= cell->is_seen == true ? MASK_IS_SEEN : 0;
+		byte |= cell->is_transparent == true ? MASK_IS_TRANSPARENT : 0;
+		byte |= cell->is_walkable == false
+			? MOVEMENT_BLOCKED
+			: cell->movement_cost & MASK_MOVEMENT_COST;
 
-	map->bytes[md_index(map->width, x, y)] = byte;
-}
+		map->bytes[md_index(map->width, x, y)] = byte;
+	}
 
-MapData* _map_new(int width, int height)
-{
-	MapData* map = malloc(sizeof(MapData));
+	MapData* _map_new(int width, int height)
+	{
+		MapData* map = malloc(sizeof(MapData));
 
-	map->width = width;
-	map->height = height;
+		map->width = width;
+		map->height = height;
 
-	map->num_bytes = map->width * map->height;
-	map->bytes = malloc(map->num_bytes);
+		map->num_bytes = map->width * map->height;
+		map->bytes = malloc(map->num_bytes);
 
-	map->tcod_map = TCOD_map_new(map->width, map->height);
+		map->tcod_map = TCOD_map_new(map->width, map->height);
 
-	return map;
-}
+		return map;
+	}
 
-void _map_read_bytearray(MapData* map, AS3_Val byte_array)
-{
-	AS3_SetS(byte_array, "position", zero_param);
-	AS3_ByteArray_readBytes(map->bytes, byte_array, map->num_bytes);
+	void _map_read_bytearray(MapData* map, AS3_Val byte_array)
+	{
+		AS3_SetS(byte_array, "position", zero_param);
+		AS3_ByteArray_readBytes(map->bytes, byte_array, map->num_bytes);
 
-	int x;
-	int y;
-	CellValue cell;
-	for (y = 0; y < map->height; y++) {
-		for (x = 0; x < map->width; x++) {
-			md_read_cell(map, x, y, &cell);
-			TCOD_map_set_properties(map->tcod_map, x, y, cell.is_transparent, cell.is_walkable);
+		int x;
+		int y;
+		CellValue cell;
+		for (y = 0; y < map->height; y++) {
+			for (x = 0; x < map->width; x++) {
+				md_read_cell(map, x, y, &cell);
+				TCOD_map_set_properties(map->tcod_map, x, y, cell.is_transparent, cell.is_walkable);
+			}
 		}
 	}
-}
 
-void _map_write_bytearray(MapData* map, AS3_Val byte_array)
-{
-	int x;
-	int y;
-	CellValue cell;
-	bool visible;
+	void _map_write_bytearray(MapData* map, AS3_Val byte_array)
+	{
+		int x;
+		int y;
+		CellValue cell;
+		bool visible;
 
-	for (y = 0; y < map->height; y++) {
-		for (x = 0; x < map->width; x++) {
-			md_read_cell(map, x, y, &cell);
-			visible = TCOD_map_is_in_fov(map->tcod_map, x, y);
-			if (visible) {
-				cell.is_visible = true;
-				cell.is_seen = true;
+		for (y = 0; y < map->height; y++) {
+			for (x = 0; x < map->width; x++) {
+				md_read_cell(map, x, y, &cell);
+				visible = TCOD_map_is_in_fov(map->tcod_map, x, y);
+				if (visible) {
+					cell.is_visible = true;
+					cell.is_seen = true;
+				}
+				else {
+					cell.is_visible = false;
+				}
+
+				md_write_cell(map, x, y, &cell);
 			}
-			else {
+		}
+
+		AS3_SetS(byte_array, "position", zero_param);
+		AS3_ByteArray_writeBytes(byte_array, map->bytes, map->num_bytes);	
+	}
+
+	void _map_clear_visible(MapData* map)
+	{
+		int x;
+		int y;
+		CellValue cell;
+		for (y = 0; y < map->height; y++) {
+			for (x = 0; x < map->width; x++) {
+				md_read_cell(map, x, y, &cell);
 				cell.is_visible = false;
+				md_write_cell(map, x, y, &cell);
 			}
-
-			md_write_cell(map, x, y, &cell);
 		}
 	}
 
-	AS3_SetS(byte_array, "position", zero_param);
-	AS3_ByteArray_writeBytes(byte_array, map->bytes, map->num_bytes);	
-}
-
-void _map_clear_visible(MapData* map)
-{
-	int x;
-	int y;
-	CellValue cell;
-	for (y = 0; y < map->height; y++) {
-		for (x = 0; x < map->width; x++) {
-			md_read_cell(map, x, y, &cell);
-			cell.is_visible = false;
-			md_write_cell(map, x, y, &cell);
+	void _map_clear_seen(MapData* map)
+	{
+		int x;
+		int y;
+		CellValue cell;
+		for (y = 0; y < map->height; y++) {
+			for (x = 0; x < map->width; x++) {
+				md_read_cell(map, x, y, &cell);
+				cell.is_seen = false;
+				md_write_cell(map, x, y, &cell);
+			}
 		}
 	}
-}
 
-void _map_clear_seen(MapData* map)
-{
-	int x;
-	int y;
-	CellValue cell;
-	for (y = 0; y < map->height; y++) {
-		for (x = 0; x < map->width; x++) {
-			md_read_cell(map, x, y, &cell);
-			cell.is_seen = false;
-			md_write_cell(map, x, y, &cell);
-		}
+	void _map_delete(MapData* map)
+	{
+		TCOD_map_delete(map->tcod_map);
+		free(map->bytes);
+		free(map);
 	}
-}
-
-void _map_delete(MapData* map)
-{
-	TCOD_map_delete(map->tcod_map);
-	free(map->bytes);
-	free(map);
-}
 
 }
 
@@ -172,8 +172,7 @@ import flash.utils.ByteArray;
 // Optomized FOV interface
 //------------------------------------------------------------
 
-public function map_new(width:int, 
-												height:int):uint
+public function map_new(width:int, height:int):uint
 {
 	return (unsigned int)_map_new(width, height);
 }
@@ -183,24 +182,17 @@ public function map_delete(map:uint):void
 	_map_delete((MapData*)map);
 }
 
-public function map_read_bytearray(map:uint, 
-																	 byteArray:ByteArray):void
+public function map_read_bytearray(map:uint, byteArray:ByteArray):void
 {
 	_map_read_bytearray((MapData*)map, byteArray);
 }
 
-public function map_write_bytearray(map:uint, 
-																		byteArray:ByteArray):void
+public function map_write_bytearray(map:uint, byteArray:ByteArray):void
 {
 	_map_write_bytearray((MapData*)map, byteArray);
 }
 
-public function map_compute_fov(map:uint, 
-																x:int,
-																y:int,
-																max_radius:int,
-																light_walls:(int)Boolean,
-																algo:int):void
+public function map_compute_fov(map:uint, x:int, y:int, max_radius:int, light_walls:(int)Boolean, algo:int):void
 {
 	TCOD_map_compute_fov(((MapData*)map)->tcod_map, x, y, max_radius, light_walls, (TCOD_fov_algorithm_t)algo);
 }
@@ -338,8 +330,7 @@ public function tcod_path_is_empty(path:uint):(AS3_Val)Object // Boolean
 	}
 }
 
-public function
-tcod_path_size/TCOD_path_size(path:(TCOD_path_t)uint):int;
+public function tcod_path_size/TCOD_path_size(path:(TCOD_path_t)uint):int;
 
 public function path_get(path:uint, index:int, vx:(AS3_Val)int, vy:(AS3_Val)int):void
 {
@@ -374,5 +365,4 @@ public function tcod_path_get_destination(path:(TCOD_path_t)uint, vx:(AS3_Val)in
 	vy = AS3_Int(y);
 }
 
-public function
-tcod_path_delete/TCOD_path_delete(path:(TCOD_path_t)uint):void;
+public function tcod_path_delete/TCOD_path_delete(path:(TCOD_path_t)uint):void;

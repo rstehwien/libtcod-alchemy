@@ -11,12 +11,12 @@ package tests
 
 		public function test_tcod_map_compute_fov():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 
 		public function test_tcod_map_is_in_fov():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 
 	}

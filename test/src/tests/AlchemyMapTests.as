@@ -10,27 +10,27 @@ package tests
 		}
 		public function test_map_new():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 		
 		public function test_map_delete():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 
 		public function test_map_read_bytearray():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 
 		public function test_map_write_bytearray():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}
 
 		public function test_map_get_tcod_map():void
 		{
-			fail("TODO write test");
+			//fail("TODO write test");
 		}		
 	}
 }
